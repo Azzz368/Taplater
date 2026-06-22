@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #091019; color: #e5edf7; }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+.react-flow__node { font-size: 12px; }
+.react-flow__attribution { display: none; }
+.react-flow__controls button { background: #14202d; border-bottom-color: #2b3b4d; color: #d5e4f2; }
+.react-flow__minimap { background: #0c1622; }
