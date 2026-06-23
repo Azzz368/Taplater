@@ -39,6 +39,24 @@ The API key is read only by server-side code in `lib/ai` and the Next.js `/api/a
 
 With `AI_PROVIDER=mock`, all nodes use local deterministic mock results and no external request is made. With `AI_PROVIDER=302ai` but without `AI_302_API_KEY`, the affected node shows a clear configuration error instead of crashing the canvas.
 
+## TokenStar Seedance video
+
+Use `videoProvider=tokenstar` in a VideoNode, then configure server-only values in `.env.local`:
+
+```dotenv
+AI_VIDEO_PROVIDER=tokenstar
+TOKENSTAR_API_KEY=sk-xxx
+TOKENSTAR_API_ORIGIN=https://api.tokenstar.io
+TOKENSTAR_VIDEO_MODEL=seedance-2.0-fast
+TOKENSTAR_VIDEO_ASSET_MODEL=seedance-2.0-asset-fast
+TOKENSTAR_DEFAULT_RATIO=16:9
+TOKENSTAR_DEFAULT_DURATION=8
+TOKENSTAR_DEFAULT_RESOLUTION=720p
+TOKENSTAR_GENERATE_AUDIO=true
+```
+
+Text-to-video creates a task at `/v1/video/generations`; polling reads `/v1/video/generations/{taskId}` and displays its `result_url`. Asset video accepts TokenStar `asset://` image, video, and audio references in that order. The browser only calls project API routes; the TokenStar key remains server-only.
+
 ## Image annotation and revision
 
 After an ImageNode has a result, select **Annotate & Refine** below its preview. The editor supports arrows, boxes, circles, and text notes; all coordinates are stored relative to the image, so annotations remain aligned when the canvas is resized.

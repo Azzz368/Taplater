@@ -3,10 +3,12 @@ import type { CanvasNode, CanvasNodeData, NodeType, WorkflowEdge } from "@/types
 const defaults: Record<NodeType, Omit<CanvasNodeData, "nodeType" | "title" | "status">> = {
   prompt: { prompt: "Describe an atmospheric creative direction", negativePrompt: "", style: "Cinematic", aspectRatio: "16:9" },
   text: { instruction: "Turn this brief into an engaging creative draft", inputText: "", model: "", temperature: 0.7 },
+  script: { storyBrief: "A fictional creative story", scriptTone: "Cinematic, warm, fictional", numberOfScenes: 3, model: "" },
   image: { prompt: "A cinematic editorial image", model: "", size: "1024x1024", referenceImageUrl: "" },
-  video: { prompt: "A gentle cinematic movement", duration: 5, aspectRatio: "16:9", referenceImageUrl: "", model: "", resolution: "", fps: "", videoInputMode: "text-to-video" },
+  video: { prompt: "A gentle cinematic movement", duration: 5, aspectRatio: "16:9", referenceImageUrl: "", model: "", resolution: "", fps: "", videoInputMode: "text-to-video", tokenstarMode: "text-to-video", generateAudio: true, referenceImageAssetUrl: "", referenceVideoAssetUrl: "", referenceAudioAssetUrl: "" },
   audio: { prompt: "A warm, modern ambient bed", voiceStyle: "Atmospheric", duration: 12, model: "", voice: "", emotion: "", volume: 1 },
   storyboard: { storyBrief: "A small transformation told in light and motion", numberOfScenes: 3, model: "" },
+  storyboardImage: { aspectRatio: "16:9", negativePrompt: "arrows, labels, UI, watermark, text overlay" },
   reference: { imageUrl: "", notes: "Visual reference and art direction." },
   output: { format: "Creative package" },
 };
@@ -15,6 +17,7 @@ export function makeNode(type: NodeType, position = { x: 140, y: 120 }): CanvasN
 }
 export type Template = { id: string; name: string; description: string; types: NodeType[] };
 export const templates: Template[] = [
+  { id: "story-package", name: "Story to Storyboard Package", description: "Brief to script to shots to keyframe prompts", types: ["prompt", "script", "storyboard", "storyboardImage", "output"] },
   { id: "ad", name: "E-commerce Product Ad", description: "Brief → hero visual → campaign copy", types: ["prompt", "image", "text", "output"] },
   { id: "film", name: "Short Film Storyboard", description: "Brief → scenes → keyframe → motion", types: ["prompt", "storyboard", "image", "video", "output"] },
   { id: "music", name: "Music Video Concept", description: "Mood → visual route → motion concept", types: ["prompt", "audio", "storyboard", "video", "output"] },

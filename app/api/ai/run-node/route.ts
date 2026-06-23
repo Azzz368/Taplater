@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
 import { normalizeAIError } from "@/lib/ai/errors";
 import { getAIProvider } from "@/lib/ai/provider";
+import { createSeedanceAssetVideo, createSeedanceVideo } from "@/lib/ai/tokenstar/tokenstarVideoProvider";
+import { createSora2ImageVideo } from "@/lib/ai/sora2VideoProvider";
+import { parseScript, scriptInstruction } from "@/lib/workflow/storyPipeline";
 import type { GenerateAudioInput, GenerateImageInput, GenerateImageRevisionInput, GenerateStoryboardInput, GenerateTextInput, GenerateVideoInput } from "@/lib/ai/types";
 
-type RunnableNodeType = "text" | "image" | "image-revision" | "video" | "audio" | "storyboard";
-const isRunnable = (value: unknown): value is RunnableNodeType => ["text", "image", "image-revision", "video", "audio", "storyboard"].includes(String(value));
+type RunnableNodeType = "text" | "script" | "image" | "image-revision" | "video" | "audio" | "storyboard";
+const isRunnable = (value: unknown): value is RunnableNodeType => ["text", "script", "image", "image-revision", "video", "audio", "storyboard"].includes(String(value));
 export async function POST(request: Request) {
   try {
     const body = await request.json() as { nodeType?: unknown; input?: unknown };
     if (!isRunnable(body.nodeType) || !body.input || typeof body.input !== "object") return NextResponse.json({ ok: false, error: { message: "Invalid nodeType or input.", code: "INVALID_REQUEST", status: 400 } }, { status: 400 });
+    const tokenstarInput = body.input as Record<string, unknown>;
+    if (body.nodeType === "video" && tokenstarInput.videoProvider === "302-sora2") { const prompt = typeof tokenstarInput.prompt === "string" ? tokenstarInput.prompt : ""; const image = typeof tokenstarInput.image === "string" ? tokenstarInput.image : ""; if (!prompt || !image) return NextResponse.json({ ok: false, error: { message: "Sora-2 image-to-video requires both a prompt and a source image.", status: 400 } }, { status: 400 }); const output = await createSora2ImageVideo({ prompt, image, duration: typeof tokenstarInput.duration === "number" ? tokenstarInput.duration : undefined, resolution: typeof tokenstarInput.resolution === "string" ? tokenstarInput.resolution : undefined }); return NextResponse.json({ ok: true, provider: "302-sora2", output, polling: { intervalMs: 5000 } }); }
+    if (body.nodeType === "video" && (tokenstarInput.videoProvider === "tokenstar" || (!tokenstarInput.videoProvider && process.env.AI_VIDEO_PROVIDER === "tokenstar"))) { const prompt = typeof tokenstarInput.prompt === "string" ? tokenstarInput.prompt : ""; if (!prompt) return NextResponse.json({ ok: false, error: { message: "A video prompt is required.", status: 400 } }, { status: 400 }); const input = { prompt, model: typeof tokenstarInput.model === "string" ? tokenstarInput.model : undefined, ratio: typeof tokenstarInput.aspectRatio === "string" ? tokenstarInput.aspectRatio : undefined, duration: typeof tokenstarInput.duration === "number" ? tokenstarInput.duration : undefined, resolution: typeof tokenstarInput.resolution === "string" ? tokenstarInput.resolution : undefined, generateAudio: typeof tokenstarInput.generateAudio === "boolean" ? tokenstarInput.generateAudio : undefined, referenceImageAssetUrl: typeof tokenstarInput.referenceImageAssetUrl === "string" ? tokenstarInput.referenceImageAssetUrl : undefined, referenceVideoAssetUrl: typeof tokenstarInput.referenceVideoAssetUrl === "string" ? tokenstarInput.referenceVideoAssetUrl : undefined, referenceAudioAssetUrl: typeof tokenstarInput.referenceAudioAssetUrl === "string" ? tokenstarInput.referenceAudioAssetUrl : undefined }; const output = tokenstarInput.mode === "asset-video" ? await createSeedanceAssetVideo(input) : await createSeedanceVideo(input); return NextResponse.json({ ok: true, provider: "tokenstar", output, polling: { intervalMs: Number(process.env.TOKENSTAR_POLL_INTERVAL_MS || 5000) } }); }
     const provider = getAIProvider();
-    const output = body.nodeType === "text" ? await provider.generateText(body.input as GenerateTextInput)
+    const output = body.nodeType === "script" ? await (() => { const input = tokenstarInput; const brief = typeof input.storyBrief === "string" ? input.storyBrief : typeof input.prompt === "string" ? input.prompt : ""; const tone = typeof input.scriptTone === "string" ? input.scriptTone : "Cinematic, fictional"; const count = Math.max(1, Math.min(12, Number(input.numberOfScenes) || 3)); return provider.generateText({ model: typeof input.model === "string" ? input.model : undefined, temperature: 0.5, prompt: scriptInstruction(brief, tone, count) }).then((result) => parseScript(result.text, brief, count)); })()
+      : body.nodeType === "text" ? await provider.generateText(body.input as GenerateTextInput)
       : body.nodeType === "image" ? await provider.generateImage(body.input as GenerateImageInput)
       : body.nodeType === "image-revision" ? await provider.generateImageRevision(body.input as GenerateImageRevisionInput)
       : body.nodeType === "video" ? await provider.generateVideo(body.input as GenerateVideoInput)

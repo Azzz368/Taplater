@@ -1,0 +1,5 @@
+export type TokenStarContentItem = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string }; role?: "reference_image" | string } | { type: "video_url"; video_url: { url: string }; role?: "reference_video" | string } | { type: "audio_url"; audio_url: { url: string }; role?: "reference_audio" | string };
+export type TokenStarCreateVideoInput = { model?: string; prompt: string; ratio?: string; duration?: number; resolution?: string; generateAudio?: boolean; callbackUrl?: string; referenceImageAssetUrl?: string; referenceVideoAssetUrl?: string; referenceAudioAssetUrl?: string };
+export type TokenStarCreateVideoResponse = { id?: string; task_id?: string; taskId?: string; status?: string; [key: string]: unknown };
+export type TokenStarPollVideoResponse = { id?: string; task_id?: string; taskId?: string; status?: string; result_url?: string; resultUrl?: string; error?: unknown; [key: string]: unknown };
+export type NormalizedVideoTask = { taskId?: string; status: "pending" | "completed" | "failed"; resultUrl?: string; raw?: unknown };
