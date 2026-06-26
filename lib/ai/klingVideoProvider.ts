@@ -8,10 +8,9 @@ type KlingTask = { taskId?: string; videoUrl?: string; status: KlingTaskStatus; 
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
 const text = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : undefined;
 const origin = () => (process.env.KLING_API_ORIGIN || "https://api-singapore.klingai.com").replace(/\/$/, "");
-const createPath = () => process.env.KLING_IMAGE_TO_VIDEO_PATH || "/image-to-video/kling-3.0-turbo";
+const createPath = () => process.env.KLING_IMAGE_TO_VIDEO_PATH || "/v1/videos/image2video";
 const pollPathTemplate = () => process.env.KLING_IMAGE_TO_VIDEO_POLL_PATH_TEMPLATE || `${createPath()}/{taskId}`;
 const compact = (value: RecordValue): RecordValue => Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined && item !== ""));
-const bool = (value: string | undefined, fallback: boolean) => value === undefined ? fallback : value.toLowerCase() === "true";
 
 const messageFrom = (body: unknown) => {
   if (typeof body === "string" && body.trim()) return body.trim();
@@ -35,24 +34,32 @@ async function klingRequest<T>(path: string, init: RequestInit = {}) {
 const isSupportedFirstFrame = (image: string) => {
   if (/^data:image\/(?:jpe?g|png);base64,/i.test(image)) return true;
   if (/^data:image\//i.test(image)) return false;
-  return /^https:\/\//i.test(image);
+  return /^https?:\/\//i.test(image);
+};
+
+// Official Kling requires raw base64 WITHOUT the "data:image/...;base64," prefix.
+const klingImageValue = (image: string) => {
+  const dataMatch = /^data:image\/(?:jpe?g|png);base64,(.+)$/i.exec(image);
+  return dataMatch ? dataMatch[1] : image;
 };
 
 const durationFor = (value: number | undefined) => {
   const duration = Math.round(value || Number(process.env.KLING_DEFAULT_DURATION || 5));
   if (duration < 3 || duration > 15) throw new AIProviderError("Kling image-to-video duration must be an integer from 3 to 15 seconds.", "INVALID_KLING_DURATION", 400);
-  return duration;
+  return String(duration);
 };
 
-const resolutionFor = (value: string | undefined) => {
-  const resolution = value || process.env.KLING_DEFAULT_RESOLUTION || "720p";
-  if (!["720p", "1080p"].includes(resolution)) throw new AIProviderError("Kling image-to-video resolution must be 720p or 1080p.", "INVALID_KLING_RESOLUTION", 400);
-  return resolution;
+// Official Kling uses video "mode" std / pro / 4k, not 720p/1080p.
+const modeFor = (value: string | undefined) => {
+  const raw = (value || process.env.KLING_DEFAULT_MODE || "std").toLowerCase();
+  if (raw === "1080p" || raw === "pro") return "pro";
+  if (raw === "4k") return "4k";
+  return "std";
 };
 
 const statusFor = (rawStatus: string | undefined, hasResult: boolean): KlingTaskStatus => {
   const status = rawStatus?.toLowerCase();
-  if (hasResult || status === "succeeded" || status === "success" || status === "completed") return "completed";
+  if (hasResult || status === "succeed" || status === "succeeded" || status === "success" || status === "completed") return "completed";
   if (status === "failed" || status === "error" || status === "cancelled" || status === "canceled") return "failed";
   if (status === "processing" || status === "running") return "running";
   return "pending";
@@ -90,10 +97,11 @@ const firstResultUrl = (raw: unknown) => {
 
 const normalizeTask = (raw: unknown, fallbackTaskId?: string): KlingTask => {
   const root = record(raw), data = record(root.data);
-  const taskId = text(data.id) || text(root.id) || text(data.task_id) || text(root.task_id) || fallbackTaskId;
-  const rawStatus = text(data.status) || text(root.status);
+  const taskId = text(data.task_id) || text(data.id) || text(root.task_id) || text(root.id) || fallbackTaskId;
+  const rawStatus = text(data.task_status) || text(data.status) || text(root.status);
+  const statusMsg = text(data.task_status_msg);
   const videoUrl = firstResultUrl(raw);
-  return { taskId, videoUrl, status: statusFor(rawStatus, Boolean(videoUrl)), rawStatus, raw };
+  return { taskId, videoUrl, status: statusFor(rawStatus, Boolean(videoUrl)), rawStatus: statusMsg ? `${rawStatus || ""}: ${statusMsg}` : rawStatus, raw };
 };
 
 const pathForTask = (taskId: string) => {
@@ -102,12 +110,25 @@ const pathForTask = (taskId: string) => {
   return /\{/.test(template) ? `${template.replace(/\/$/, "")}/${encoded}` : template;
 };
 
-export async function createKlingImageVideo(input: { prompt: string; image: string; negativePrompt?: string; duration?: number; resolution?: string; callbackUrl?: string; externalTaskId?: string; watermarkEnabled?: boolean }): Promise<KlingTask> {
+export async function createKlingImageVideo(input: { prompt: string; image: string; imageTail?: string; modelName?: string; negativePrompt?: string; duration?: number; resolution?: string; mode?: string; sound?: boolean; callbackUrl?: string; externalTaskId?: string; watermarkEnabled?: boolean }): Promise<KlingTask> {
   if (!input.prompt.trim()) throw new AIProviderError("Kling image-to-video requires a prompt.", "INVALID_KLING_PROMPT", 400);
-  const prompt = [input.prompt.trim(), input.negativePrompt?.trim() ? `Negative: ${input.negativePrompt.trim()}` : ""].filter(Boolean).join("\n");
-  if (prompt.length > 2500) throw new AIProviderError("Kling image-to-video prompt cannot exceed 2500 characters.", "INVALID_KLING_PROMPT", 400);
-  if (!isSupportedFirstFrame(input.image)) throw new AIProviderError("Kling image-to-video requires an HTTPS image URL or a JPG/PNG base64 data URL for the first frame.", "INVALID_KLING_FIRST_FRAME", 400);
-  const raw = await klingRequest(createPath(), { method: "POST", body: JSON.stringify({ contents: [{ type: "prompt", text: prompt }, { type: "first_frame", url: input.image }], settings: { resolution: resolutionFor(input.resolution), duration: durationFor(input.duration) }, options: compact({ callback_url: input.callbackUrl || process.env.KLING_CALLBACK_URL, external_task_id: input.externalTaskId, watermark_info: { enabled: input.watermarkEnabled ?? bool(process.env.KLING_WATERMARK_ENABLED, false) } }) }) });
+  if (input.prompt.trim().length > 2500) throw new AIProviderError("Kling image-to-video prompt cannot exceed 2500 characters.", "INVALID_KLING_PROMPT", 400);
+  if (!input.image && !input.imageTail) throw new AIProviderError("Kling image-to-video requires a first-frame image (or an end-frame image). Connect a completed Image node or set a reference image URL.", "INVALID_KLING_FIRST_FRAME", 400);
+  if (input.image && !isSupportedFirstFrame(input.image)) throw new AIProviderError("Kling image-to-video requires an HTTPS image URL or a JPG/PNG base64 data URL for the first frame.", "INVALID_KLING_FIRST_FRAME", 400);
+  if (input.imageTail && !isSupportedFirstFrame(input.imageTail)) throw new AIProviderError("Kling end-frame image must be an HTTPS image URL or a JPG/PNG base64 data URL.", "INVALID_KLING_FIRST_FRAME", 400);
+  const body = compact({
+    model_name: input.modelName || process.env.KLING_VIDEO_MODEL || "kling-v2-6",
+    image: input.image ? klingImageValue(input.image) : undefined,
+    image_tail: input.imageTail ? klingImageValue(input.imageTail) : undefined,
+    prompt: input.prompt.trim(),
+    negative_prompt: input.negativePrompt?.trim() || undefined,
+    duration: durationFor(input.duration),
+    mode: modeFor(input.mode || input.resolution),
+    sound: input.sound === false ? "off" : (process.env.KLING_DEFAULT_SOUND || "off"),
+    callback_url: input.callbackUrl || process.env.KLING_CALLBACK_URL,
+    external_task_id: input.externalTaskId,
+  });
+  const raw = await klingRequest(createPath(), { method: "POST", body: JSON.stringify(body) });
   return normalizeTask(raw);
 }
 
