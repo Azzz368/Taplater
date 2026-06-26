@@ -79,18 +79,13 @@ export function NodeToolbar() {
             )}
           </div>
         ))}
-      </div>
-
-      {/* Upload image from computer */}
-      <div className="mt-3 border-t border-[#e7eaf0] pt-3 dark:border-slate-700">
+        {/* Upload local image — same style as other nodes, placed inline */}
         <button
           onClick={() => fileRef.current?.click()}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#c9ccd1] px-3 py-2 text-xs font-semibold text-[#676f7b] transition hover:border-[#030303] hover:text-[#030303] dark:border-slate-600 dark:text-slate-400 dark:hover:border-cyan-400 dark:hover:text-cyan-300"
+          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold transition text-[#939393] hover:bg-[#f0f1f3] hover:text-[#676f7b] dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-400"
         >
-          <span className="text-sm leading-none">+</span>
-          \u6dfb\u52a0\u56fe\u7247
+          添加 图片素材
         </button>
-        <p className="mt-1 text-center text-[9px] text-[#939393] dark:text-slate-600">jpg \u00b7 png \u00b7 webp\uff0c\u53ef\u62d6\u5165\u753b\u5e03</p>
         <input
           ref={fileRef}
           type="file"
@@ -103,7 +98,7 @@ export function NodeToolbar() {
 
       {ghostType && (
         <p className="mt-3 rounded-md bg-[#f0f1f3] px-2 py-1.5 text-[10px] leading-4 text-[#676f7b] dark:bg-slate-800 dark:text-slate-400">
-          \u5de6\u952e\u5355\u51fb\u753b\u5e03\u653e\u7f6e\u8282\u70b9<br/>\u53f3\u952e\u5355\u51fb\u53d6\u6d88
+          左键单击画布放置节点<br/>右键单击取消
         </p>
       )}
     </aside>
