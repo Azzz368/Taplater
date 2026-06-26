@@ -115,13 +115,24 @@ function NodePreview({ node, t, onView, onAnnotate }: { node: CanvasNode; t: Str
 
 function ResizeHandle({ onResize }: { onResize(dx: number, dy: number): void }) {
   const startRef = useRef<{ x: number; y: number } | null>(null);
+  const activeRef = useRef(false); // only fire after crossing dead zone
   return (
-    <div className="nodrag absolute bottom-0 right-0 z-10 h-4 w-4 cursor-se-resize"
+    <div className="nodrag absolute bottom-0 right-0 z-10 h-5 w-5 cursor-se-resize"
       onMouseDown={e => {
         e.stopPropagation();
         startRef.current = { x: e.clientX, y: e.clientY };
-        const onMove = (ev: MouseEvent) => { if (!startRef.current) return; onResize(ev.clientX - startRef.current.x, ev.clientY - startRef.current.y); startRef.current = { x: ev.clientX, y: ev.clientY }; };
-        const onUp = () => { startRef.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+        activeRef.current = false;
+        const onMove = (ev: MouseEvent) => {
+          if (!startRef.current) return;
+          const dx = ev.clientX - startRef.current.x;
+          const dy = ev.clientY - startRef.current.y;
+          // 6px dead zone before activating resize
+          if (!activeRef.current && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          activeRef.current = true;
+          onResize(dx, dy);
+          startRef.current = { x: ev.clientX, y: ev.clientY };
+        };
+        const onUp = () => { startRef.current = null; activeRef.current = false; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
         window.addEventListener("mousemove", onMove);
         window.addEventListener("mouseup", onUp);
       }}>
@@ -144,7 +155,12 @@ export function AnnotatedCustomNode({ id, data, selected }: NodeProps<CanvasNode
   return (
     <>
       <div style={{ width: cardSize.w, ...(cardSize.h > 0 ? { height: cardSize.h } : {}) }}
-        className={`relative rounded-xl border bg-white shadow-md shadow-black/5 dark:bg-[#101c29] dark:shadow-xl dark:shadow-black/20 ${cardSize.h > 0 ? "flex flex-col" : ""} ${selected ? "border-[#030303] dark:border-cyan-400" : "border-[#e7eaf0] dark:border-slate-700"}`}>
+        className={`relative rounded-xl border bg-white shadow-md shadow-black/5 dark:bg-[#101c29] dark:shadow-xl dark:shadow-black/20 ${cardSize.h > 0 ? "flex flex-col" : ""} ${selected ? "border-[#030303] dark:border-cyan-400" : data.groupColor ? "border-transparent" : "border-[#e7eaf0] dark:border-slate-700"}`}
+        style={data.groupColor ? { borderColor: data.groupColor, borderWidth: 2 } : {}}>
+        {/* Group colour top strip */}
+        {data.groupColor && (
+          <div className="rounded-t-xl h-1.5 w-full" style={{ background: data.groupColor }} />
+        )}
         <Handle type="target" position={Position.Left} className="!h-2.5 !w-2.5 !border-2 !border-white !bg-[#030303] dark:!border-[#101c29] dark:!bg-cyan-400"/>
         {/* Extra reference-image input handle for image nodes (offset down) */}
         {data.nodeType === "image" && (
@@ -182,7 +198,14 @@ export function AnnotatedCustomNode({ id, data, selected }: NodeProps<CanvasNode
         </div>
         <Handle type="source" position={Position.Right} className="!h-2.5 !w-2.5 !border-2 !border-white !bg-[#030303] dark:!border-[#101c29] dark:!bg-cyan-400"/>
         {settingsOpen && <NodeSettingsPanel data={data} nodeId={id} onClose={() => setSettingsOpen(false)} />}
-        <ResizeHandle onResize={(dx, dy) => setCardSize(prev => ({ w: Math.max(220, prev.w + dx), h: Math.max(180, (prev.h > 0 ? prev.h : 240) + dy) }))} />
+        <ResizeHandle onResize={(dx, dy) => setCardSize(prev => {
+          const newW = Math.max(220, prev.w + dx);
+          // Only lock height if already in fixed-height mode, or user is clearly dragging down
+          const newH = prev.h > 0
+            ? Math.max(180, prev.h + dy)
+            : dy > 4 ? Math.max(180, 240 + dy) : 0;
+          return { w: newW, h: newH };
+        })} />
       </div>
       {viewUrl && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[9999] grid place-items-center bg-black/85 p-8" onClick={() => setViewUrl("")}>

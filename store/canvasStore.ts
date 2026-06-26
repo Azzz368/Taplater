@@ -9,7 +9,11 @@ import type { CanvasNode, CanvasNodeData, CanvasSnapshot, ImageAnnotation, NodeO
 
 type CanvasState = { projectName: string; nodes: CanvasNode[]; edges: WorkflowEdge[]; selectedNodeId: string | null; lastError: string | null;
   ghostType: NodeType | null; setGhostType(type: NodeType | null): void; placeGhostNode(position: { x: number; y: number }): void;
+  ghostMediaUrl: string | null; setGhostMedia(dataUrl: string): void; placeGhostMedia(position: { x: number; y: number }): void;
   addMediaNode(dataUrl: string, position: { x: number; y: number }): void;
+  runGroup(groupId: string): Promise<void>;
+  setGroupColor(nodeIds: string[], color: string): void;
+  setGroupLocked(nodeIds: string[], locked: boolean): void;
   setProjectName(name: string): void; setSelectedNode(id: string | null): void; onNodesChange(changes: NodeChange<CanvasNode>[]): void; onEdgesChange(changes: EdgeChange<WorkflowEdge>[]): void; onConnect(connection: Connection): void;
   addNode(type: NodeType): void; updateNodeData(id: string, patch: Partial<CanvasNodeData>): void; removeNode(id: string): void; duplicateNode(id: string): void; createImageRevision(sourceId: string, annotations: ImageAnnotation[], instruction: string): Promise<void>; createKeyframeBatch(sourceId: string): void; setCanvas(nodes: CanvasNode[], edges: WorkflowEdge[]): void;
   runNode(id: string): Promise<void>; pollNode(id: string): Promise<void>; runWorkflow(): Promise<void>; saveCanvas(): void; loadCanvas(): void; clearCanvas(): void; exportCanvasJson(): string; importCanvasJson(raw: string): void; applyTemplate(template: Template): void; };
@@ -46,10 +50,15 @@ const canRunRemotely = (type: CanvasNode["data"]["nodeType"]) => ["text", "scrip
 const schedulePoll = (id: string, run: () => void, intervalMs = 3000) => { if (typeof window !== "undefined") window.setTimeout(run, Math.max(500, intervalMs)); };
 const restoreStatuses = (nodes: CanvasNode[]): CanvasNode[] => nodes.map((node) => { if (node.data.status !== "running") return node; const polling = ["pending", "running"].includes(asText(asRecord(node.data.output?.value).status)); const status: CanvasNodeData["status"] = polling ? "waiting" : "idle"; return { ...node, data: { ...node.data, status } }; });
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  projectName: "Untitled creative flow", nodes: initialNodes, edges: [], selectedNodeId: null, lastError: null, ghostType: null,
+  projectName: "Untitled creative flow", nodes: initialNodes, edges: [], selectedNodeId: null, lastError: null, ghostType: null, ghostMediaUrl: null,
   setGhostType: (ghostType) => set({ ghostType }),
   placeGhostNode: (position) => { const { ghostType } = get(); if (!ghostType) return; const node = makeNode(ghostType, position); set((state) => ({ nodes: [...state.nodes, node], selectedNodeId: node.id, ghostType: null })); },
-  addMediaNode: (dataUrl, position) => { const node: CanvasNode = { id: `reference-${crypto.randomUUID()}`, type: "creative", position, data: { nodeType: "reference", title: "参考图", status: "idle", imageUrl: dataUrl, notes: "" } }; set((state) => ({ nodes: [...state.nodes, node], selectedNodeId: node.id })); },
+  setGhostMedia: (dataUrl) => set({ ghostMediaUrl: dataUrl }),
+  placeGhostMedia: (position) => { const { ghostMediaUrl } = get(); if (!ghostMediaUrl) return; const node: CanvasNode = { id: `reference-${crypto.randomUUID()}`, type: "creative", position, data: { nodeType: "reference", title: "图片素材", status: "idle", imageUrl: ghostMediaUrl, notes: "" } }; set((state) => ({ nodes: [...state.nodes, node], selectedNodeId: node.id, ghostMediaUrl: null })); },
+  addMediaNode: (dataUrl, position) => { const node: CanvasNode = { id: `reference-${crypto.randomUUID()}`, type: "creative", position, data: { nodeType: "reference", title: "图片素材", status: "idle", imageUrl: dataUrl, notes: "" } }; set((state) => ({ nodes: [...state.nodes, node], selectedNodeId: node.id })); },
+  setGroupColor: (nodeIds, color) => set((state) => ({ nodes: state.nodes.map((n) => nodeIds.includes(n.id) ? { ...n, data: { ...n.data, groupColor: color } } : n) })),
+  setGroupLocked: (nodeIds, locked) => set((state) => ({ nodes: state.nodes.map((n) => nodeIds.includes(n.id) ? { ...n, draggable: !locked, data: { ...n.data, locked } } : n) })),
+  runGroup: async (groupId) => { const { nodes } = get(); const group = nodes.filter((n) => n.data.groupId === groupId); for (const n of group) await get().runNode(n.id); },
   setProjectName: (projectName) => set({ projectName }), setSelectedNode: (selectedNodeId) => set({ selectedNodeId }),
   onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) as CanvasNode[] })), onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
   onConnect: (connection) => set((state) => ({ edges: addEdge({ ...connection, id: `edge-${crypto.randomUUID()}`, animated: true }, state.edges) })),

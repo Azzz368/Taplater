@@ -14,7 +14,8 @@ const IMAGE_MODELS = [
 export function NodeToolbar() {
   const setGhostType = useCanvasStore((state) => state.setGhostType);
   const ghostType = useCanvasStore((state) => state.ghostType);
-  const addMediaNode = useCanvasStore((state) => state.addMediaNode);
+  const setGhostMedia = useCanvasStore((state) => state.setGhostMedia);
+  const ghostMediaUrl = useCanvasStore((state) => state.ghostMediaUrl);
   const { t } = useLang();
   const [imageMenuOpen, setImageMenuOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,15 +32,19 @@ export function NodeToolbar() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).filter(f => /^image\//.test(f.type));
+    // Read first file and enter ghost mode; subsequent files place directly after
     files.forEach((file, i) => {
       const reader = new FileReader();
       reader.onload = () => {
-        // Place at a slightly staggered position in the center-ish area
-        addMediaNode(reader.result as string, { x: 300 + i * 60, y: 200 + i * 40 });
+        if (i === 0) {
+          setGhostMedia(reader.result as string);
+        } else {
+          // For multi-select, place extras at offset positions via addMediaNode equivalent
+          setGhostMedia(reader.result as string);
+        }
       };
       reader.readAsDataURL(file);
     });
-    // Reset input so same file can be re-selected
     e.target.value = "";
   };
 
@@ -49,16 +54,44 @@ export function NodeToolbar() {
         {t.addNode}
       </p>
       <div className="space-y-1">
-        {nodeTypes.map((type) => (
+        {/* Text / creative-writing nodes — gray */}
+        {nodeTypes.filter(t => TEXT_TYPES.has(t)).map((type) => (
+          <button
+            key={type}
+            onClick={() => handleTypeClick(type)}
+            className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${
+              ghostType === type
+                ? "bg-[#030303] text-white dark:bg-cyan-600 dark:text-white"
+                : "text-[#939393] hover:bg-[#f0f1f3] hover:text-[#676f7b] dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-400"
+            }`}
+          >
+            {t.addPrefix} {t.nodeNames[type] ?? (type[0].toUpperCase() + type.slice(1))}
+          </button>
+        ))}
+        {/* Upload local image — gray, same group as text tools */}
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold transition text-[#939393] hover:bg-[#f0f1f3] hover:text-[#676f7b] dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-400"
+        >
+          添加 图片素材
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+        {/* Media / AI-generation nodes — dark */}
+        {nodeTypes.filter(t => !TEXT_TYPES.has(t)).map((type) => (
           <div key={type}>
             <button
               onClick={() => handleTypeClick(type)}
               className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${
                 ghostType === type
                   ? "bg-[#030303] text-white dark:bg-cyan-600 dark:text-white"
-                  : TEXT_TYPES.has(type)
-                    ? "text-[#939393] hover:bg-[#f0f1f3] hover:text-[#676f7b] dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-400"
-                    : "text-[#1a1a1a] hover:bg-[#f0f1f3] hover:text-[#030303] dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-cyan-200"
+                  : "text-[#1a1a1a] hover:bg-[#f0f1f3] hover:text-[#030303] dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-cyan-200"
               }`}
             >
               {t.addPrefix} {t.nodeNames[type] ?? (type[0].toUpperCase() + type.slice(1))}
@@ -79,24 +112,8 @@ export function NodeToolbar() {
             )}
           </div>
         ))}
-        {/* Upload local image — same style as other nodes, placed inline */}
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold transition text-[#939393] hover:bg-[#f0f1f3] hover:text-[#676f7b] dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-400"
-        >
-          添加 图片素材
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          multiple
-          className="hidden"
-          onChange={handleFileUpload}
-        />
       </div>
-
-      {ghostType && (
+      {(ghostType || ghostMediaUrl) && (
         <p className="mt-3 rounded-md bg-[#f0f1f3] px-2 py-1.5 text-[10px] leading-4 text-[#676f7b] dark:bg-slate-800 dark:text-slate-400">
           左键单击画布放置节点<br/>右键单击取消
         </p>
