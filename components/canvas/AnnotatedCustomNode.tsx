@@ -9,19 +9,22 @@ import { useLang } from "@/components/LangProvider";
 import type { CanvasNode, CanvasNodeData, ImageAnnotation } from "@/types/canvas";
 import type { Strings } from "@/lib/i18n/strings";
 
+const GLOW_COLORS: Record<string, string> = {
+  video: "#f43f5e",
+  image: "#3b82f6",
+  audio: "#f59e0b",
+  text: "#10b981",
+  prompt: "#a855f7",
+  script: "#1e293b",
+  storyboard: "#1e293b",
+  storyboardImage: "#8b5cf6",
+  reference: "#64748b",
+  output: "#64748b",
+};
 const icons: Record<string, string> = { prompt: "\u2726", text: "T", image: "\u25C8", video: "\u25B6", audio: "\u266B", storyboard: "\u25A6", reference: "\u2141", output: "\u2197" };
 const RUNNABLE_TYPES = new Set(["prompt", "text", "script", "image", "video", "audio", "storyboard", "storyboardImage", "output"]);
 const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {};
 const text = (value: unknown) => typeof value === "string" ? value : "";
-
-function CollisionLoader() {
-  return (
-    <span className="collision-loader" aria-label="generating" title="Generating…">
-      <span className="cball cball-a" />
-      <span className="cball cball-b" />
-    </span>
-  );
-}
 
 function NodeSettingsPanel({ data, nodeId, onClose }: { data: CanvasNodeData; nodeId: string; onClose(): void }) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
@@ -183,6 +186,9 @@ export function AnnotatedCustomNode({ id, data, selected }: NodeProps<CanvasNode
       <div
         style={{ width: cardSize.w, ...(cardSize.h > 0 ? { height: cardSize.h } : {}), ...(data.groupColor ? { borderColor: data.groupColor, borderWidth: 2 } : {}) }}
         className={`relative rounded-xl border bg-white shadow-md shadow-black/5 dark:bg-[#101c29] dark:shadow-xl dark:shadow-black/20 ${cardSize.h > 0 ? "flex flex-col" : ""} ${selected ? "border-[#030303] dark:border-cyan-400" : data.groupColor ? "border-transparent" : "border-[#e7eaf0] dark:border-slate-700"}`}>
+        {isGenerating && (
+          <div className="running-glow-wrapper" style={{ "--glow-color": GLOW_COLORS[data.nodeType] || "#22d3ee" } as React.CSSProperties} />
+        )}
         {/* Group colour top strip */}
         {data.groupColor && (
           <div className="rounded-t-xl h-1.5 w-full" style={{ background: data.groupColor }} />
@@ -210,7 +216,7 @@ export function AnnotatedCustomNode({ id, data, selected }: NodeProps<CanvasNode
               <circle cx="8" cy="8" r="2.5"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"/>
             </svg>
           </button>
-          {isGenerating ? <CollisionLoader /> : <Badge status={data.status}/>}
+          {!isGenerating && <Badge status={data.status}/>}
         </div>
         <div className={`px-3 py-2 ${cardSize.h > 0 ? "flex-1 overflow-y-auto" : "min-h-20"}`}>
           <NodePreview node={node} t={t} onView={setViewUrl} onAnnotate={setAnnotatingUrl}/>
