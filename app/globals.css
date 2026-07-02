@@ -103,3 +103,33 @@ button { cursor: pointer; }
   to   { transform: rotate(360deg); }
 }
 
+.animated-dash {
+  background-image: linear-gradient(90deg, #c9ccd1 50%, transparent 50%),
+                    linear-gradient(90deg, #c9ccd1 50%, transparent 50%),
+                    linear-gradient(0deg, #c9ccd1 50%, transparent 50%),
+                    linear-gradient(0deg, #c9ccd1 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 20px 2px, 20px 2px, 2px 20px, 2px 20px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  border: none !important;
+  transition: all 0.3s ease;
+}
+
+.animated-dash:hover {
+  animation: border-dance 0.8s infinite linear;
+  background-image: linear-gradient(90deg, #404040 50%, transparent 50%),
+                    linear-gradient(90deg, #404040 50%, transparent 50%),
+                    linear-gradient(0deg, #404040 50%, transparent 50%),
+                    linear-gradient(0deg, #404040 50%, transparent 50%);
+  background-color: #fafafa;
+}
+
+@keyframes border-dance {
+  0% {
+    background-position: 0 0, 0 100%, 0 0, 100% 0;
+  }
+  100% {
+    background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px;
+  }
+}
+

@@ -90,7 +90,7 @@ export function WorkflowDashboard() {
             </div>
           </div>
           <nav className="space-y-1 text-sm">
-            <div className="bg-[#f2edff] px-3 py-2 text-[#6d28d9]">Projects</div>
+            <div className="rounded px-3 py-2 bg-[#f2edff] text-[#6d28d9]">Projects</div>
             <div className="px-3 py-2 text-[#404040]">Blueprints</div>
             <div className="px-3 py-2 text-[#404040]">Environment Groups</div>
           </nav>
@@ -105,7 +105,7 @@ export function WorkflowDashboard() {
           <header className="flex h-12 items-center border-b border-[#e7eaf0] px-6">
             <p className="text-sm font-medium">Projects</p>
             <div className="ml-auto flex items-center gap-2">
-              {verified && <button onClick={createWorkflow} disabled={busy} className="h-8 bg-[#030303] px-4 text-sm font-semibold text-white disabled:opacity-50">+ New</button>}
+              {verified && <button onClick={createWorkflow} disabled={busy} className="h-8 rounded bg-[#030303] px-4 text-sm font-semibold text-white disabled:opacity-50">+ New</button>}
             </div>
           </header>
 
@@ -116,42 +116,42 @@ export function WorkflowDashboard() {
                 <p className="mt-3 max-w-xl text-sm leading-6 text-[#676f7b]">输入访问码后，这台电脑会进入共享工作区。没有访问码时保持空白画布入口，不加载任何共享 workflow。</p>
               </div>
               <form onSubmit={(event) => { event.preventDefault(); void loadWorkflows(accessCode); }} className="flex w-full max-w-sm gap-2">
-                <input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Access code" className="h-9 min-w-0 flex-1 border border-[#c9ccd1] px-3 text-sm outline-none focus:border-[#030303]" />
-                <button disabled={busy} className="h-9 bg-[#030303] px-4 text-sm font-semibold text-white disabled:opacity-50">Enter</button>
+                <input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Access code" className="h-9 min-w-0 flex-1 rounded border border-[#c9ccd1] px-3 text-sm outline-none focus:border-[#030303]" />
+                <button disabled={busy} className="h-9 rounded bg-[#030303] px-4 text-sm font-semibold text-white disabled:opacity-50">Enter</button>
               </form>
             </div>
 
-            {message && <div className="mb-6 border border-[#c9ccd1] px-4 py-3 text-sm text-[#404040]">{message}</div>}
+            {message && <div className="mb-6 rounded border border-[#c9ccd1] px-4 py-3 text-sm text-[#404040]">{message}</div>}
 
             <h2 className="mb-5 text-base font-semibold">Projects</h2>
             {!verified ? (
               <div className="grid gap-5 md:grid-cols-3">
-                <div className="border border-[#e7eaf0] bg-white p-4">
+                <div className="rounded border border-[#e7eaf0] bg-white p-4">
                   <h3 className="font-semibold">Blank canvas</h3>
-                  <p className="mt-5 inline-flex bg-[#f0f1f3] px-2 py-1 text-xs text-[#404040]">No shared workflows loaded</p>
+                  <p className="mt-5 inline-flex rounded bg-[#f0f1f3] px-2 py-1 text-xs text-[#404040]">No shared workflows loaded</p>
                 </div>
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {workflows.map((workflow) => (
-                  <div key={workflow.id} className="border border-[#e7eaf0] bg-white p-4">
+                  <div key={workflow.id} className="group flex flex-col rounded border border-[#e7eaf0] bg-white p-4 transition-all duration-300 hover:border-[#404040] hover:bg-[#fafafa]">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold">{workflow.name}</h3>
-                        <p className="mt-5 inline-flex bg-[#d9fbe8] px-2 py-1 text-xs text-[#047857]">Shared workflow</p>
+                      <div className="min-w-0 transition-transform duration-300 group-hover:translate-x-1">
+                        <h3 className="truncate font-semibold transition-all duration-300 group-hover:font-extrabold group-hover:text-[1.05rem]">{workflow.name}</h3>
+                        <p className="mt-5 inline-flex rounded bg-[#d9fbe8] px-2 py-1 text-xs text-[#047857] transition-all duration-300 group-hover:bg-[#047857] group-hover:text-white group-hover:font-bold">Shared workflow</p>
                       </div>
-                      <div className="flex shrink-0 gap-2 text-xs">
-                        <button onClick={() => void renameWorkflow(workflow)} className="text-[#404040] hover:text-[#030303]">Rename</button>
-                        <button onClick={() => void deleteWorkflow(workflow)} className="text-[#404040] hover:text-[#030303]">Delete</button>
+                      <div className="flex shrink-0 gap-2 text-xs opacity-80 transition-opacity duration-300 group-hover:opacity-100">
+                        <button onClick={() => void renameWorkflow(workflow)} className="text-[#404040] transition-colors hover:text-[#030303] hover:font-bold">Rename</button>
+                        <button onClick={() => void deleteWorkflow(workflow)} className="text-[#404040] transition-colors hover:text-[#030303] hover:font-bold">Delete</button>
                       </div>
                     </div>
-                    <div className="mt-6 flex items-center justify-between border-t border-[#e7eaf0] pt-3">
-                      <span className="text-xs text-[#939393]">Updated {new Date(workflow.updatedAt).toLocaleString()}</span>
-                      <Link href={`/workspace/${workflow.id}`} className="bg-[#030303] px-4 py-2 text-sm font-semibold text-white">Open</Link>
+                    <div className="mt-6 flex items-center justify-between border-t border-[#e7eaf0] pt-3 transition-colors duration-300 group-hover:border-[#c9ccd1]">
+                      <span className="text-xs text-[#939393] transition-colors duration-300 group-hover:text-[#676f7b]">Updated {new Date(workflow.updatedAt).toLocaleString()}</span>
+                      <Link href={`/workspace/${workflow.id}`} className="rounded bg-[#030303] px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#1a1a1a] hover:px-5">Open</Link>
                     </div>
                   </div>
                 ))}
-                <button onClick={createWorkflow} disabled={busy} className="min-h-28 border border-dashed border-[#c9ccd1] bg-white p-4 text-sm text-[#404040] disabled:opacity-50">+ Create new project</button>
+                <button onClick={createWorkflow} disabled={busy} className="animated-dash min-h-28 rounded bg-white p-4 text-sm font-medium text-[#404040] transition-all duration-300 hover:font-bold hover:text-[#030303] disabled:opacity-50">+ Create new project</button>
               </div>
             )}
           </div>
