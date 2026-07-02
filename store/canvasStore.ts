@@ -150,7 +150,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         instruction: "Story chain brainstorming note",
         inputText: content,
         groupId: "story-chain",
-        groupColor: "#a8c4bc",
+        groupColor: undefined,
       },
     };
     return {
@@ -159,7 +159,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       selectedNodeId: node.id,
     };
   }),
-  setGroupColor: (nodeIds, color) => set((state) => ({ nodes: state.nodes.map((n) => nodeIds.includes(n.id) ? { ...n, data: { ...n.data, groupColor: color } } : n) })),
+  setGroupColor: (nodeIds, color) => set((state) => { const groupId = `group-${crypto.randomUUID()}`; return { nodes: state.nodes.map((n) => nodeIds.includes(n.id) ? { ...n, data: { ...n.data, groupId, groupColor: color } } : n) }; }),
   setGroupLocked: (nodeIds, locked) => set((state) => ({ nodes: state.nodes.map((n) => nodeIds.includes(n.id) ? { ...n, draggable: !locked, data: { ...n.data, locked } } : n) })),
   runGroup: async (groupId) => { const { nodes } = get(); const group = nodes.filter((n) => n.data.groupId === groupId); for (const n of group) await get().runNode(n.id); },
   setProjectName: (projectName) => set({ projectName }), setSelectedNode: (selectedNodeId) => set({ selectedNodeId }),

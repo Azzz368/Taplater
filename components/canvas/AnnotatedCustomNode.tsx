@@ -183,14 +183,10 @@ export function AnnotatedCustomNode({ id, data, selected }: NodeProps<CanvasNode
   return (
     <>
       <div
-        style={{ width: cardSize.w, ...(cardSize.h > 0 ? { height: cardSize.h } : {}), ...(data.groupColor ? { borderColor: data.groupColor, borderWidth: 2 } : {}) }}
-        className={`relative rounded-xl border bg-white shadow-md shadow-black/5 dark:bg-[#101c29] dark:shadow-xl dark:shadow-black/20 ${cardSize.h > 0 ? "flex flex-col" : ""} ${selected ? "border-[#030303] dark:border-cyan-400" : data.groupColor ? "border-transparent" : "border-[#e7eaf0] dark:border-slate-700"}`}>
+        style={{ width: cardSize.w, ...(cardSize.h > 0 ? { height: cardSize.h } : {}) }}
+        className={`relative rounded-xl border bg-white shadow-md shadow-black/5 dark:bg-[#101c29] dark:shadow-xl dark:shadow-black/20 ${cardSize.h > 0 ? "flex flex-col" : ""} ${selected ? "border-[#030303] dark:border-cyan-400" : "border-[#e7eaf0] dark:border-slate-700"}`}>
         {isGenerating && (
           <div className="running-glow-wrapper" style={{ "--glow-color": GLOW_COLORS[data.nodeType] || "#22d3ee" } as React.CSSProperties} />
-        )}
-        {/* Group colour top strip */}
-        {data.groupColor && (
-          <div className="rounded-t-xl h-1.5 w-full" style={{ background: data.groupColor }} />
         )}
         <Handle type="target" position={Position.Left} className="!h-2.5 !w-2.5 !border-2 !border-white !bg-[#030303] dark:!border-[#101c29] dark:!bg-cyan-400"/>
         {/* Extra reference-image input handle for image nodes (offset down) */}
